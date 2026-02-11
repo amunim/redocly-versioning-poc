@@ -28,3 +28,5 @@ paths:
                     type: string
                   age:
                     type: integer
+                  address:
+                    type: string
