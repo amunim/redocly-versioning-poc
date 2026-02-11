@@ -34,6 +34,9 @@
                     },
                     "email": {
                       "type": "string"
+                    },
+                    "age": {
+                      "type": "integer"
                     }
                   }
                 }
