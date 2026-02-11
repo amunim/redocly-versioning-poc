@@ -1,0 +1,77 @@
+name: API Governance
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch all history for comparison
+
+      - name: Setup Redocly CLI
+        uses: redocly/openapi-cli/setup-action@v1
+        with:
+          version: latest
+
+      - name: Lint API
+        run: redocly lint
+
+      - name: Bundle APIs
+        run: |
+          mkdir -p dist/v1 dist/v2
+          redocly bundle openapi/v1/openapi.yaml -o dist/v1/openapi.json
+          redocly bundle openapi/v2/openapi.yaml -o dist/v2/openapi.json
+
+      - name: Check for Breaking Changes (v1)
+        # Only run on PRs or when not on main to compare against main
+        if: github.event_name == 'pull_request'
+        continue-on-error: true # We handle the failure manually to check version
+        id: break_check
+        run: |
+          # Compare HEAD openapi/v1/openapi.yaml against origin/main version
+          redocly break openapi/v1/openapi.yaml --from origin/main:openapi/v1/openapi.yaml > break_report.txt 2>&1
+          
+      - name: Enforce Major Version Bump on Breaking Change
+        if: steps.break_check.outcome == 'failure'
+        run: |
+          echo "Breaking changes detected!"
+          cat break_report.txt
+          
+          # Extract versions
+          CURRENT_VERSION=$(grep -m 1 'version:' openapi/v1/openapi.yaml | awk '{print $2}')
+          BASE_VERSION=$(git show origin/main:openapi/v1/openapi.yaml | grep -m 1 'version:' | awk '{print $2}')
+          
+          echo "Current Version: $CURRENT_VERSION"
+          echo "Base Version: $BASE_VERSION"
+          
+          CURRENT_MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          BASE_MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+          
+          if [ "$CURRENT_MAJOR" -le "$BASE_MAJOR" ]; then
+            echo "Error: Breaking changes detected but major version was not bumped."
+            echo "Please increment the major version in openapi/v1/openapi.yaml (e.g., from $BASE_VERSION to $((BASE_MAJOR+1)).0.0)"
+            exit 1
+          else
+             echo "Major version bumped. Breaking changes accepted."
+          fi
+
+      - name: Commit Bundles (on merge to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add dist/
+          # Only commit if there are changes
+          if ! git diff --quiet --staged; then
+            git commit -m "chore: update api bundles [skip ci]"
+            git push
+          fi

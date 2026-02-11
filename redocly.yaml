@@ -1,0 +1,9 @@
+apis:
+  v1:
+    root: openapi/v1/openapi.yaml
+  v2:
+    root: openapi/v2/openapi.yaml
+
+lint:
+  extends:
+    - recommended
