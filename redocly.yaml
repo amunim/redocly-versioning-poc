@@ -4,6 +4,5 @@ apis:
   v2:
     root: openapi/v2/openapi.yaml
 
-lint:
-  extends:
-    - recommended
+extends:
+  - recommended
