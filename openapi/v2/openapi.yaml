@@ -2,15 +2,21 @@ openapi: 3.0.0
 info:
   title: User API
   version: 2.0.0
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3000
 paths:
   /users:
     get:
       summary: Get user
+      operationId: getUsers
+      security: []
       parameters:
         - name: limit
           in: query
           schema:
-            type: integer
+            type: string
           description: Max number of users to return
       responses:
         '200':
@@ -34,3 +40,5 @@ paths:
                     properties:
                       version:
                         type: string
+        '400':
+          description: Bad request
