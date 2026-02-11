@@ -10,7 +10,7 @@ paths:
         - name: limit
           in: query
           schema:
-            type: integer
+            type: string
           description: Max number of users to return
       responses:
         '200':
