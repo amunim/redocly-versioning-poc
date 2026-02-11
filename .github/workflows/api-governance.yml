@@ -40,8 +40,12 @@ jobs:
         continue-on-error: true # We handle the failure manually to check version
         id: break_check
         run: |
-          # Compare HEAD openapi/v1/openapi.yaml against origin/main version
-          redocly break openapi/v1/openapi.yaml --from origin/main:openapi/v1/openapi.yaml > break_report.txt 2>&1
+          # Extract base version for comparison
+          git show origin/main:openapi/v1/openapi.yaml > openapi_base.yaml
+
+          # Run openapi-diff using Docker
+          # We use openapitools/openapi-diff which returns exit code 1 on breaking changes
+          docker run --rm -v $(pwd):/specs openapitools/openapi-diff:latest /specs/openapi_base.yaml /specs/openapi/v1/openapi.yaml > break_report.txt 2>&1
           
       - name: Enforce Major Version Bump on Breaking Change
         if: steps.break_check.outcome == 'failure'
